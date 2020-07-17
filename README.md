@@ -64,6 +64,7 @@ bgLocationServices.configure({
      debug: true, // <-- Enable to show visual indications when you receive a background location update
      interval: 9000, // (Milliseconds) Requested Interval in between location updates.
      useActivityDetection: true, // Uses Activitiy detection to shut off gps when you are still (Greatly enhances Battery Life)
+     onlyBackground: false, // Listen for location updates when app is in foreground and background
      
      //Android Only
      notificationTitle: 'BG Plugin', // customize the title of the notification

@@ -9,9 +9,11 @@ import org.json.JSONObject;
 
 import android.annotation.TargetApi;
 
+import android.app.NotificationChannel;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 
+import android.support.annotation.RequiresApi;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import static android.telephony.PhoneStateListener.*;
@@ -78,7 +80,7 @@ public class BackgroundLocationUpdateService
         extends Service
         implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
-    private static final String TAG = "BackgroundLocationUpdateService";
+    private static final String TAG = "BackgroundLocService";
 
     private Location lastLocation;
     private DetectedActivity lastActivity;
@@ -106,6 +108,7 @@ public class BackgroundLocationUpdateService
     private String notificationTitle = "Background checking";
     private String notificationText = "ENABLED";
     private Boolean useActivityDetection = false;
+    private Boolean onlyBackground = false;
 
     private Boolean stopOnTerminate;
     private Boolean isRequestingActivity = false;
@@ -178,6 +181,7 @@ public class BackgroundLocationUpdateService
             notificationText = intent.getStringExtra("notificationText");
 
             useActivityDetection = Boolean.parseBoolean(intent.getStringExtra("useActivityDetection"));
+            onlyBackground = Boolean.parseBoolean(intent.getStringExtra("onlyBackground"));
 
 
             // Build the notification / pending intent
@@ -187,7 +191,14 @@ public class BackgroundLocationUpdateService
 
             Context context = getApplicationContext();
 
-            Notification.Builder builder = new Notification.Builder(this);
+            String NOTIFICATION_CHANNEL_ID = "";
+            Notification.Builder builder;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NOTIFICATION_CHANNEL_ID = createNotificationChannel("background_geolocation", "Geolocation");
+                builder = new Notification.Builder(this, NOTIFICATION_CHANNEL_ID);
+            } else {
+                builder = new Notification.Builder(this);
+            }
             builder.setContentTitle(notificationTitle);
             builder.setContentText(notificationText);
             builder.setSmallIcon(context.getApplicationInfo().icon);
@@ -232,6 +243,10 @@ public class BackgroundLocationUpdateService
 
             notification.flags |= Notification.FLAG_ONGOING_EVENT | Notification.FLAG_FOREGROUND_SERVICE | Notification.FLAG_NO_CLEAR;
             startForeground(startId, notification);
+
+            if(!onlyBackground) {
+                startRecording();
+            }
         }
 
         // Log.i(TAG, "- url: " + url);
@@ -246,9 +261,17 @@ public class BackgroundLocationUpdateService
         Log.i(TAG, "- notificationText: "   + notificationText);
         Log.i(TAG, "- useActivityDetection: "   + useActivityDetection);
         Log.i(TAG, "- activityDetectionInterval: "   + activitiesInterval);
+        Log.i(TAG, "- onlyBackground: "   + onlyBackground);
 
         //We want this service to continue running until it is explicitly stopped
         return START_REDELIVER_INTENT;
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private String createNotificationChannel(String channelId, String channelName) {
+        NotificationChannel chan = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_NONE);
+        ((NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(chan);
+        return channelId;
     }
 
     //Receivers for setting the plugin to a certain state
@@ -469,6 +492,7 @@ public class BackgroundLocationUpdateService
 
 
     public void startRecording() {
+        if(this.isRecording) return;
         Log.w(TAG, "Started Recording Locations");
         this.startRecordingOnConnect = true;
         attachRecorder();
@@ -533,7 +557,8 @@ public class BackgroundLocationUpdateService
                     .setFastestInterval(fastestInterval)
                     .setInterval(interval)
                     .setSmallestDisplacement(distanceFilter);
-            LocationServices.FusedLocationApi.requestLocationUpdates(locationClientAPI, locationRequest, locationUpdatePI);
+            LocationServices.getFusedLocationProviderClient(this).requestLocationUpdates(locationRequest, locationUpdatePI);
+//            LocationServices.FusedLocationApi.requestLocationUpdates(locationClientAPI, locationRequest, locationUpdatePI);
             this.isRecording = true;
 
             if(isDebugging) {
@@ -549,7 +574,8 @@ public class BackgroundLocationUpdateService
             connectToPlayAPI();
         } else if (locationClientAPI.isConnected()) {
             //flush the location updates from the api
-            LocationServices.FusedLocationApi.removeLocationUpdates(locationClientAPI, locationUpdatePI);
+//            LocationServices.FusedLocationApi.removeLocationUpdates(locationClientAPI, locationUpdatePI);
+            LocationServices.getFusedLocationProviderClient(this).removeLocationUpdates(locationUpdatePI);
             this.isRecording = false;
             if(isDebugging) {
                 Log.w(TAG, "- Recorder detached - stop recording location updates");

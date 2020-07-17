@@ -31,6 +31,7 @@ var activityType = CLActivityType.automotiveNavigation;
 var interval = 5.0;
 var debug: Bool?;
 var useActivityDetection = false;
+var onlyBackground = false;
 var aggressiveInterval = 2.0;
 
 var stationaryTimout = (Double)(5 * 60); // 5 minutes
@@ -86,6 +87,7 @@ var activityCommandDelegate:CDVCommandDelegate?;
     // 7 notificationText-- (not used on ios),
     // 8 activityType, fences -- (not used ios)
     // 9 useActivityDetection
+    // 10 onlyBackground
     @objc open func configure(_ command: CDVInvokedUrlCommand) {
 
         //log(message: "configure arguments: \(command.arguments)");
@@ -97,6 +99,7 @@ var activityCommandDelegate:CDVCommandDelegate?;
         activityType = self.toActivityType(type: command.argument(at: 8) as! String);
         debug = command.argument(at: 5) as? Bool;
         useActivityDetection = command.argument(at: 9) as! Bool;
+        onlyBackground = command.argument(at: 11) as! Bool;
 
         log(message: "--------------------------------------------------------");
         log(message: "   Configuration Success");
@@ -129,7 +132,7 @@ var activityCommandDelegate:CDVCommandDelegate?;
 
         log(message: "Are we in the background? \(background)");
 
-        if(background) {
+        if(background || !onlyBackground) {
             locationManager.startUpdating(force: false);
             activityManager.startDetection();
         }
@@ -181,15 +184,17 @@ var activityCommandDelegate:CDVCommandDelegate?;
         background = false;
 
         taskManager.endAllBackgroundTasks();
-        locationManager.stopUpdating();
-        activityManager.stopDetection();
+        if(onlyBackground) {
+            locationManager.stopUpdating();
+            activityManager.stopDetection();
+        }
     }
 
     @objc func onSuspend() {
         log(message: "App Suspended. Enabled? \(enabled)");
         background = true;
 
-        if(enabled) {
+        if(enabled || onlyBackground) {
             locationManager.startUpdating(force: true);
             activityManager.startDetection();
         }
@@ -199,7 +204,7 @@ var activityCommandDelegate:CDVCommandDelegate?;
         log(message: "App Will Resign. Enabled? \(enabled)");
         background = true;
 
-        if(enabled) {
+        if(enabled || onlyBackground) {
             locationManager.startUpdating(force: false);
             activityManager.startDetection();
         }

@@ -56,6 +56,7 @@ public class BackgroundLocationServicesPlugin extends CordovaPlugin {
     private String fastestInterval = "60000";
     private String aggressiveInterval = "4000";
     private String activitiesInterval = "1000";
+    private String onlyBackground = "false";
 
     private String distanceFilter = "30";
     private String isDebugging = "false";
@@ -206,6 +207,7 @@ public class BackgroundLocationServicesPlugin extends CordovaPlugin {
               updateServiceIntent.putExtra("aggressiveInterval", aggressiveInterval);
               updateServiceIntent.putExtra("activitiesInterval", activitiesInterval);
               updateServiceIntent.putExtra("useActivityDetection", useActivityDetection);
+              updateServiceIntent.putExtra("onlyBackground", onlyBackground);
 
             if (hasPermisssion()) {
                 isServiceBound = bindServiceToWebview(activity, updateServiceIntent);
@@ -245,6 +247,7 @@ public class BackgroundLocationServicesPlugin extends CordovaPlugin {
                 //this.activityType = data.getString(8);
                 this.useActivityDetection = data.getString(9);
                 this.activitiesInterval = data.getString(10);
+                this.onlyBackground = data.getString(11);
 
 
 
@@ -334,7 +337,9 @@ public class BackgroundLocationServicesPlugin extends CordovaPlugin {
         }
         if (isEnabled) {
             Activity activity = this.cordova.getActivity();
-            activity.sendBroadcast(new Intent(Constants.START_RECORDING));
+            if(Boolean.parseBoolean(onlyBackground)) {
+                activity.sendBroadcast(new Intent(Constants.START_RECORDING));
+            }
         }
     }
 
@@ -345,7 +350,9 @@ public class BackgroundLocationServicesPlugin extends CordovaPlugin {
         }
         if (isEnabled) {
             Activity activity = this.cordova.getActivity();
-            activity.sendBroadcast(new Intent(Constants.STOP_RECORDING));
+            if(Boolean.parseBoolean(onlyBackground)) {
+                activity.sendBroadcast(new Intent(Constants.STOP_RECORDING));
+            }
         }
     }
 
